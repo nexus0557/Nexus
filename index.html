@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>인체해부학 퀴즈</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3e;
+    --accent: #6c63ff;
+    --accent2: #ff6584;
+    --correct: #00e5a0;
+    --wrong: #ff4d6d;
+    --text: #e8e8f0;
+    --text2: #8888aa;
+    --text3: #5555777;
+    --glow: rgba(108,99,255,0.3);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Noto Sans KR', sans-serif; overflow-x: hidden; }
+
+  /* particles bg */
+  #canvas-bg { position: fixed; top:0; left:0; width:100%; height:100%; z-index:0; pointer-events:none; opacity:0.35; }
+
+  .app { position: relative; z-index:1; min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* ── HEADER ── */
+  .header {
+    padding: 24px 20px 16px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(108,99,255,0.08) 0%, transparent 100%);
+  }
+  .header-title {
+    font-size: 13px; font-family: 'Space Mono', monospace;
+    letter-spacing: 4px; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 6px;
+  }
+  .header-main { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
+  .header-sub { font-size: 12px; color: var(--text2); margin-top: 4px; }
+
+  /* ── PROGRESS ── */
+  .progress-wrap { padding: 14px 20px 0; }
+  .progress-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .progress-label { font-size: 12px; color: var(--text2); font-family:'Space Mono',monospace; }
+  .score-badge {
+    font-size: 11px; font-family:'Space Mono',monospace;
+    background: var(--surface2); border: 1px solid var(--border);
+    padding: 3px 10px; border-radius: 20px;
+    display: flex; gap: 10px;
+  }
+  .score-c { color: var(--correct); }
+  .score-w { color: var(--wrong); }
+  .progress-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px; transition: width 0.5s cubic-bezier(.4,0,.2,1);
+    box-shadow: 0 0 8px var(--glow);
+  }
+
+  /* ── CATEGORY FILTER ── */
+  .cat-scroll { display: flex; gap: 8px; padding: 14px 20px; overflow-x: auto; scrollbar-width: none; }
+  .cat-scroll::-webkit-scrollbar { display: none; }
+  .cat-btn {
+    flex-shrink: 0; font-size: 11px; font-family:'Space Mono',monospace;
+    padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text2); cursor: pointer;
+    transition: all 0.2s; white-space: nowrap;
+  }
+  .cat-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 12px var(--glow); }
+
+  /* ── QUESTION CARD ── */
+  .card-wrap { flex: 1; padding: 0 16px 20px; }
+  .question-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px 20px 20px;
+    position: relative;
+    overflow: hidden;
+    transform-origin: center top;
+    animation: cardIn 0.4s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes cardIn {
+    from { opacity:0; transform: translateY(20px) scale(0.97); }
+    to   { opacity:1; transform: translateY(0) scale(1); }
+  }
+  .card-glow {
+    position: absolute; top:-60px; right:-40px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, var(--glow) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .q-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .q-chapter {
+    font-size: 10px; font-family:'Space Mono',monospace;
+    color: var(--accent); letter-spacing: 2px; text-transform: uppercase;
+    background: rgba(108,99,255,0.12); padding: 4px 10px; border-radius: 10px;
+  }
+  .q-num { font-size: 11px; color: var(--text3); font-family:'Space Mono',monospace; }
+  .q-text { font-size: 16px; font-weight: 700; line-height: 1.55; margin-bottom: 22px; }
+
+  /* ── OPTIONS ── */
+  .options { display: flex; flex-direction: column; gap: 10px; }
+  .opt-btn {
+    position: relative; overflow: hidden;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: 14px; padding: 14px 16px;
+    text-align: left; cursor: pointer; color: var(--text);
+    font-size: 14px; font-family: 'Noto Sans KR', sans-serif;
+    transition: all 0.2s cubic-bezier(.4,0,.2,1);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .opt-btn:active { transform: scale(0.98); }
+  .opt-letter {
+    flex-shrink: 0; width: 28px; height: 28px;
+    border-radius: 8px; background: var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-family:'Space Mono',monospace; font-weight: 700;
+    transition: all 0.2s;
+  }
+  .opt-text { flex: 1; line-height: 1.4; }
+  .opt-btn:not(.answered):hover { border-color: var(--accent); background: rgba(108,99,255,0.1); transform: translateX(3px); }
+  .opt-btn:not(.answered):hover .opt-letter { background: var(--accent); color: #fff; }
+
+  .opt-btn.correct {
+    border-color: var(--correct); background: rgba(0,229,160,0.1);
+    animation: bounceIn 0.4s cubic-bezier(.34,1.56,.64,1);
+  }
+  .opt-btn.correct .opt-letter { background: var(--correct); color: #0a0a0f; }
+  .opt-btn.wrong {
+    border-color: var(--wrong); background: rgba(255,77,109,0.1);
+    animation: shake 0.4s ease;
+  }
+  .opt-btn.wrong .opt-letter { background: var(--wrong); color: #fff; }
+  .opt-btn.show-correct { border-color: var(--correct); background: rgba(0,229,160,0.06); opacity:0.7; }
+  .opt-btn.show-correct .opt-letter { background: rgba(0,229,160,0.3); }
+
+  @keyframes bounceIn {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.03) translateX(5px); }
+    100% { transform: scale(1) translateX(3px); }
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+
+  /* ripple */
+  .ripple { position: absolute; border-radius: 50%; transform: scale(0); animation: rippleAnim 0.5s linear; opacity: 0.3; pointer-events: none; }
+  @keyframes rippleAnim { to { transform: scale(4); opacity: 0; } }
+
+  /* ── EXPLANATION ── */
+  .explanation {
+    margin-top: 16px; padding: 14px 16px;
+    background: rgba(108,99,255,0.07);
+    border: 1px solid rgba(108,99,255,0.2);
+    border-radius: 12px;
+    animation: fadeSlideUp 0.35s ease;
+  }
+  @keyframes fadeSlideUp {
+    from { opacity:0; transform: translateY(8px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+  .expl-header { display:flex; align-items:center; gap:8px; margin-bottom: 8px; }
+  .expl-icon { font-size: 16px; }
+  .expl-label { font-size: 11px; font-family:'Space Mono',monospace; color: var(--accent); letter-spacing: 2px; }
+  .expl-text { font-size: 13px; color: var(--text2); line-height: 1.6; }
+  .expl-answer { font-size: 14px; font-weight: 700; color: var(--correct); margin-top: 6px; }
+
+  /* ── NEXT BUTTON ── */
+  .next-btn {
+    margin-top: 20px; width: 100%; padding: 16px;
+    background: linear-gradient(135deg, var(--accent), #8b7fff);
+    border: none; border-radius: 14px; color: #fff;
+    font-size: 15px; font-weight: 700; font-family:'Noto Sans KR',sans-serif;
+    cursor: pointer; letter-spacing: 0.5px;
+    box-shadow: 0 4px 20px var(--glow);
+    transition: all 0.2s; display: none;
+    animation: fadeSlideUp 0.35s ease;
+  }
+  .next-btn:active { transform: scale(0.97); }
+  .next-btn.visible { display: block; }
+
+  /* ── RESULT SCREEN ── */
+  .result-screen {
+    display: none; flex-direction: column; align-items: center;
+    padding: 40px 24px; text-align: center;
+  }
+  .result-screen.show { display: flex; animation: cardIn 0.5s ease; }
+  .result-emoji { font-size: 64px; margin-bottom: 16px; animation: bounce 1s ease infinite; }
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+  .result-title { font-size: 28px; font-weight: 900; margin-bottom: 8px; }
+  .result-score {
+    font-size: 64px; font-weight: 900; font-family:'Space Mono',monospace;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    margin: 10px 0;
+  }
+  .result-sub { font-size: 14px; color: var(--text2); margin-bottom: 32px; }
+  .result-stats {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    width: 100%; max-width: 320px; margin-bottom: 32px;
+  }
+  .stat-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px; text-align: center;
+  }
+  .stat-num { font-size: 28px; font-weight: 900; font-family:'Space Mono',monospace; }
+  .stat-label { font-size: 11px; color: var(--text2); margin-top: 4px; }
+  .restart-btn {
+    width: 100%; max-width: 320px; padding: 16px;
+    background: linear-gradient(135deg, var(--accent), #8b7fff);
+    border: none; border-radius: 14px; color: #fff;
+    font-size: 15px; font-weight: 700; font-family:'Noto Sans KR',sans-serif;
+    cursor: pointer; box-shadow: 0 4px 20px var(--glow);
+  }
+
+  /* ── LOADING ── */
+  .loading {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 100; gap: 20px;
+  }
+  .loading-ring {
+    width: 48px; height: 48px; border-radius: 50%;
+    border: 3px solid var(--border); border-top-color: var(--accent);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13px; color: var(--text2); font-family:'Space Mono',monospace; letter-spacing: 2px; }
+</style>
+</head>
+<body>
+
+<canvas id="canvas-bg"></canvas>
+
+<div class="loading" id="loading">
+  <div class="loading-ring"></div>
+  <div class="loading-text">LOADING QUIZ...</div>
+</div>
+
+<div class="app" id="app" style="display:none;">
+  <div class="header">
+    <div class="header-title">Human Anatomy</div>
+    <div class="header-main">인체해부학 퀴즈</div>
+    <div class="header-sub">기말고사 대비 · 객관식 4지선다</div>
+  </div>
+
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-info">
+      <span class="progress-label" id="progressLabel">1 / 50</span>
+      <span class="score-badge">
+        <span class="score-c" id="scoreC">✓ 0</span>
+        <span class="score-w" id="scoreW">✗ 0</span>
+      </span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  </div>
+
+  <div class="cat-scroll" id="catScroll"></div>
+
+  <div class="card-wrap" id="cardWrap">
+    <div class="question-card" id="questionCard">
+      <div class="card-glow"></div>
+      <div class="q-meta">
+        <span class="q-chapter" id="qChapter">6장 신경계통</span>
+        <span class="q-num" id="qNum">#001</span>
+      </div>
+      <div class="q-text" id="qText">문제가 여기에 표시됩니다.</div>
+      <div class="options" id="options"></div>
+      <div id="explanation" style="display:none;" class="explanation">
+        <div class="expl-header"><span class="expl-icon">💡</span><span class="expl-label">EXPLANATION</span></div>
+        <div class="expl-text" id="explText"></div>
+        <div class="expl-answer" id="explAnswer"></div>
+      </div>
+      <button class="next-btn" id="nextBtn">다음 문제 →</button>
+    </div>
+  </div>
+
+  <div class="result-screen" id="resultScreen">
+    <div class="result-emoji" id="resultEmoji">🏆</div>
+    <div class="result-title" id="resultTitle">퀴즈 완료!</div>
+    <div class="result-score" id="resultScore">0%</div>
+    <div class="result-sub" id="resultSub">수고하셨습니다!</div>
+    <div class="result-stats">
+      <div class="stat-box"><div class="stat-num score-c" id="statC">0</div><div class="stat-label">정답</div></div>
+      <div class="stat-box"><div class="stat-num score-w" id="statW">0</div><div class="stat-label">오답</div></div>
+      <div class="stat-box"><div class="stat-num" id="statTotal">0</div><div class="stat-label">총 문제</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:var(--accent)" id="statRate">0%</div><div class="stat-label">정답률</div></div>
+    </div>
+    <button class="restart-btn" onclick="restart()">🔄 다시 도전</button>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+// QUIZ DATA — 문제/답 원본 그대로
+// ════════════════════════════════════════════
+const RAW = [
+  // 6장 신경계통
+  { ch:"6장 신경계통", q:"중추신경계통의 2종류는?", a:"뇌(Brain), 척수(Spinal cord)", opts:["뇌(Brain), 척수(Spinal cord)","교감신경, 부교감신경","대뇌, 소뇌, 뇌줄기","척수신경, 뇌신경"], expl:"중추신경계통(CNS)은 뇌와 척수로 구성됩니다." },
+  { ch:"6장 신경계통", q:"내장기관과 피부의 작용을 조절하는 교감신경과 부교감신경으로 구성된 것은?", a:"자율신경계통(Autonomic nervous system)", opts:["자율신경계통(Autonomic nervous system)","체성신경계통","중추신경계통","말초신경계통"], expl:"자율신경계통은 교감신경과 부교감신경으로 구성되며 내장·피부를 조절합니다." },
+  { ch:"6장 신경계통", q:"중추신경계통을 싸는 3개의 섬유성 막을 무엇이라 하는가?", a:"뇌척수막(Meninges)", opts:["뇌척수막(Meninges)","뇌혈관장벽","연질막(Pia mater)","경질막(Dura mater)"], expl:"뇌척수막(Meninges)은 경질막, 거미막, 연질막의 3층으로 구성됩니다." },
+  { ch:"6장 신경계통", q:"뇌와 척수의 항상성을 유지하고 떠 있게 하는 투명한 수용성 매질은?", a:"뇌척수액(CerebroSpinal Fluid)", opts:["뇌척수액(CerebroSpinal Fluid)","혈장(Plasma)","림프액(Lymph)","안구방수(Aqueous humor)"], expl:"뇌척수액(CSF)은 맥락얼기에서 생산되어 뇌와 척수를 쿠션처럼 보호합니다." },
+  { ch:"6장 신경계통", q:"신경계통이 발생되어 나온 배엽은?", a:"외배엽(Ectoderm)", opts:["외배엽(Ectoderm)","내배엽(Endoderm)","중배엽(Mesoderm)","배아외배엽"], expl:"신경계통은 외배엽에서 발생합니다. 신경관이 외배엽으로부터 형성됩니다." },
+  { ch:"6장 신경계통", q:"신경세포에서 신경정보를 받아들이는 곳은?", a:"가지돌기(Dendrite)", opts:["가지돌기(Dendrite)","축삭(Axon)","시냅스소포","신경종말"], expl:"가지돌기(Dendrite)는 다른 신경세포로부터 신호를 받아들이는 구조입니다." },
+  { ch:"6장 신경계통", q:"말초신경계통에서 말이집을 형성하는 신경아교세포는?", a:"신경집세포(Schwann cell)", opts:["신경집세포(Schwann cell)","별아교세포(Astrocyte)","희소돌기아교세포","미세아교세포"], expl:"말초신경계통에서는 신경집세포(Schwann cell)가 말이집을 형성합니다." },
+  { ch:"6장 신경계통", q:"뇌주름의 높은 부위를 지칭하는 것은?", a:"대뇌이랑(Gyrus)", opts:["대뇌이랑(Gyrus)","대뇌고랑(Sulcus)","대뇌섬(Insula)","소뇌벌레(Vermis)"], expl:"뇌 표면의 주름에서 볼록 솟은 부위를 이랑(Gyrus), 홈진 부위를 고랑(Sulcus)이라 합니다." },
+  { ch:"6장 신경계통", q:"대뇌의 이마엽과 마루엽을 구분하는 것은?", a:"중심고랑(Central sulcus)", opts:["중심고랑(Central sulcus)","가쪽고랑(Lateral sulcus)","두정후두고랑","중심앞이랑"], expl:"중심고랑(Central sulcus)이 이마엽과 마루엽을 구분합니다. 앞은 운동영역, 뒤는 감각영역." },
+  { ch:"6장 신경계통", q:"대뇌 5개 엽 중에서 청각기능과 관련있는 것은?", a:"Temporal lobe (측두엽)", opts:["Temporal lobe (측두엽)","Frontal lobe (이마엽)","Occipital lobe (뒤통수엽)","Parietal lobe (마루엽)"], expl:"청각겉질(Auditory cortex)은 측두엽(Temporal lobe)에 위치합니다." },
+  { ch:"6장 신경계통", q:"대뇌의 5개 엽 중에서 표면에서 보이지 않는 것은?", a:"Insula (대뇌섬)", opts:["Insula (대뇌섬)","Frontal lobe","Parietal lobe","Occipital lobe"], expl:"대뇌섬(Insula)은 가쪽고랑 속에 숨어 있어 뇌 표면에서 보이지 않습니다." },
+  { ch:"6장 신경계통", q:"왼쪽 대뇌반구 이마엽 아래 이랑에 위치하는 운동언어중추는?", a:"브로카영역(Broca's area)", opts:["브로카영역(Broca's area)","베르니케영역(Wernicke's area)","모이랑(Angular gyrus)","중심앞이랑"], expl:"브로카영역은 언어를 생성(말하기)하는 운동언어중추입니다." },
+  { ch:"6장 신경계통", q:"관자엽 위쪽 이랑에 위치하는 감각언어중추는?", a:"베르니케영역(Wernicke's area)", opts:["베르니케영역(Wernicke's area)","브로카영역(Broca's area)","모이랑(Angular gyrus)","일차청각겉질"], expl:"베르니케영역은 언어를 이해하는 감각언어중추로 관자엽에 위치합니다." },
+  { ch:"6장 신경계통", q:"사이뇌를 구성하는 기관이 아닌 것은?", a:"소뇌(Cerebellum)", opts:["소뇌(Cerebellum)","시상(Thalamus)","시상하부(Hypothalamus)","뇌하수체(Pituitary gland)"], expl:"사이뇌는 시상, 시상하부, 시상상부, 뇌하수체로 구성됩니다. 소뇌는 별개입니다." },
+  { ch:"6장 신경계통", q:"뇌줄기를 구성하는 3부분은?", a:"중간뇌, 다리뇌, 숨뇌", opts:["중간뇌, 다리뇌, 숨뇌","대뇌, 소뇌, 뇌줄기","시상, 시상하부, 뇌하수체","이마엽, 마루엽, 뒤통수엽"], expl:"뇌줄기는 위에서부터 중간뇌(Midbrain) - 다리뇌(Pons) - 숨뇌(Medulla oblongata)로 구성됩니다." },
+  { ch:"6장 신경계통", q:"생명중추의 핵으로 볼 수 있는 뇌줄기 부위는?", a:"숨뇌(Medulla oblongata)", opts:["숨뇌(Medulla oblongata)","다리뇌(Pons)","중간뇌(Midbrain)","소뇌(Cerebellum)"], expl:"숨뇌는 심장박동, 호흡, 혈압 등 생명유지에 필수적인 중추가 있습니다." },
+  { ch:"6장 신경계통", q:"뇌척수막을 바깥부터 순서대로 나열한 것은?", a:"경질막 → 거미막 → 연질막", opts:["경질막 → 거미막 → 연질막","거미막 → 경질막 → 연질막","연질막 → 거미막 → 경질막","경질막 → 연질막 → 거미막"], expl:"뇌척수막은 바깥부터 경질막(Dura mater) - 거미막(Arachnoid mater) - 연질막(Pia mater) 순입니다." },
+  { ch:"6장 신경계통", q:"뇌척수액이 생산되는 곳은?", a:"맥락얼기(Choroid plexus)", opts:["맥락얼기(Choroid plexus)","거미막융모(Arachnoid villi)","뇌실(Ventricle)","뇌혈관장벽"], expl:"뇌척수액은 뇌실 내의 맥락얼기에서 생산됩니다." },
+  { ch:"6장 신경계통", q:"뇌척수액이 순환계통으로 배출되는 곳은?", a:"거미막융모(Arachnoid villi)", opts:["거미막융모(Arachnoid villi)","맥락얼기(Choroid plexus)","중간뇌수도관","넷째뇌실"], expl:"거미막융모를 통해 뇌척수액이 경막정맥굴로 흡수되어 순환계통으로 들어갑니다." },
+  { ch:"6장 신경계통", q:"뇌신경 중 가장 길고 다양한 가지를 가진 것은?", a:"미주신경(Vagus nerve, 10번)", opts:["미주신경(Vagus nerve, 10번)","삼차신경(5번)","얼굴신경(7번)","혀밑신경(12번)"], expl:"미주신경(CN X)은 목, 가슴, 배까지 분포하는 가장 긴 뇌신경입니다." },
+  { ch:"6장 신경계통", q:"뇌신경 중 감각신경으로만 구성된 것끼리 묶은 것은?", a:"후각신경(1), 시각신경(2), 속귀신경(8)", opts:["후각신경(1), 시각신경(2), 속귀신경(8)","얼굴신경(7), 혀인두신경(9)","눈돌림신경(3), 도르래신경(4), 갓돌림신경(6)","삼차신경(5), 미주신경(10)"], expl:"순수 감각신경: 후각신경(1), 시각신경(2), 속귀신경(8) — 나머지는 혼합신경입니다." },
+  { ch:"6장 신경계통", q:"팔꿈치가 펴지지 않는 마비는?", a:"노신경마비(Radial nerve palsy)", opts:["노신경마비(Radial nerve palsy)","자신경마비(Ulnar nerve palsy)","정중신경마비(Median nerve palsy)","겨드랑이신경마비"], expl:"노신경(Radial nerve)은 팔꿈치 신전(펴기)을 담당합니다." },
+  { ch:"6장 신경계통", q:"'독수리손'이 되는 신경마비는?", a:"자신경마비(Ulnar nerve palsy)", opts:["자신경마비(Ulnar nerve palsy)","노신경마비(Radial nerve palsy)","정중신경마비(Median nerve palsy)","근육피부신경마비"], expl:"자신경(Ulnar nerve) 마비 시 손가락 끝마디가 굽고 손가락 벌림·모음이 불가(독수리손)해집니다." },
+  { ch:"6장 신경계통", q:"'원숭이손'이 되는 신경마비는?", a:"정중신경마비(Median nerve palsy)", opts:["정중신경마비(Median nerve palsy)","자신경마비(Ulnar nerve palsy)","노신경마비(Radial nerve palsy)","넙다리신경마비"], expl:"정중신경(Median nerve) 마비 시 손의 엎침·손목·손가락 굴곡 불능(원숭이손)이 됩니다." },
+  { ch:"6장 신경계통", q:"인체에서 가장 큰 신경은?", a:"궁둥신경(Sciatic nerve)", opts:["궁둥신경(Sciatic nerve)","넙다리신경(Femoral nerve)","노신경(Radial nerve)","삼차신경(Trigeminal nerve)"], expl:"궁둥신경(Sciatic nerve)은 엉치신경얼기에서 나오는 인체 최대의 신경입니다." },
+  { ch:"6장 신경계통", q:"반사활의 5가지 구성 요소에 해당하지 않는 것은?", a:"사이뇌(Diencephalon)", opts:["사이뇌(Diencephalon)","감각수용기(Sensory receptor)","운동신경세포(Motor neuron)","효과기(Effector)"], expl:"반사활: 감각수용기 → 감각신경세포 → 중추(연합뉴런) → 운동신경세포 → 효과기" },
+  { ch:"6장 신경계통", q:"교감신경이 시작되어 빠져나오는 척수 부위는?", a:"T1 ~ L2", opts:["T1 ~ L2","C1 ~ C8","L1 ~ S4","S2 ~ S4"], expl:"교감신경은 흉수(T1)~요수(L2) 사이에서 기원하여 척수를 통해 나옵니다." },
+
+  // 7장 감각계통
+  { ch:"7장 감각계통", q:"광수용기세포 2종류는?", a:"막대세포(Rod cell), 원뿔세포(Cone cell)", opts:["막대세포(Rod cell), 원뿔세포(Cone cell)","두극신경세포, 신경절세포","섬모체세포, 홍채세포","안쪽핵층세포, 바깥핵층세포"], expl:"망막의 광수용기는 어두운 곳(명암)을 감지하는 막대세포와 색을 감지하는 원뿔세포입니다." },
+  { ch:"7장 감각계통", q:"통증과 관련된 신체감각 수용체는?", a:"자유신경종말(Free nerve ending)", opts:["자유신경종말(Free nerve ending)","파치니소체","마이스너소체","고유감각수용기"], expl:"자유신경종말은 가장 단순한 수용기로 통증, 온도, 가벼운 촉각을 감지합니다." },
+  { ch:"7장 감각계통", q:"통증이 피부에 있는 것처럼 느껴지지만 실제 근원이 내부장기인 것은?", a:"연관통(Referred pain)", opts:["연관통(Referred pain)","방사통","심부통","신경통"], expl:"연관통은 내장 통증이 체표면 통증처럼 인식되는 현상입니다. 심근경색 시 팔 통증이 예시입니다." },
+  { ch:"7장 감각계통", q:"후각신경섬유가 통과하는 구멍이 있는 뼈는?", a:"벌집뼈 벌집체판(Ethmoid Cribriform plate)", opts:["벌집뼈 벌집체판(Ethmoid Cribriform plate)","나비뼈(Sphenoid)","이마뼈(Frontal bone)","위턱뼈(Maxilla)"], expl:"후각신경섬유는 벌집뼈의 체판(Cribriform plate)의 구멍을 통해 코 안으로 들어갑니다." },
+  { ch:"7장 감각계통", q:"미각을 뇌로 전달하는 뇌신경 2종류는?", a:"얼굴신경(7번), 혀인두신경(9번)", opts:["얼굴신경(7번), 혀인두신경(9번)","시각신경(2번), 후각신경(1번)","미주신경(10번), 혀밑신경(12번)","삼차신경(5번), 속귀신경(8번)"], expl:"미각은 얼굴신경(CN VII, 앞 2/3)과 혀인두신경(CN IX, 뒤 1/3)이 전달합니다." },
+  { ch:"7장 감각계통", q:"혀 유두 중에서 가장 많지만 미각을 지각하지 않는 것은?", a:"실유두(Filiform papillae)", opts:["실유두(Filiform papillae)","성곽유두(Vallate papillae)","버섯유두(Fungiform papillae)","엽상유두"], expl:"실유두는 혀 표면에 가장 많으나 맛봉오리가 없어 미각에 관여하지 않습니다." },
+  { ch:"7장 감각계통", q:"빛의 양을 조절하고 눈의 색을 결정하는 부위는?", a:"홍채(Iris)", opts:["홍채(Iris)","각막(Cornea)","수정체(Lens)","섬모체(Ciliary body)"], expl:"홍채는 빛의 양에 따라 동공을 조절하며 눈의 색을 결정합니다." },
+  { ch:"7장 감각계통", q:"교감신경과 부교감신경의 동공 작용은?", a:"교감→확장, 부교감→수축", opts:["교감→확장, 부교감→수축","교감→수축, 부교감→확장","둘 다 확장","둘 다 수축"], expl:"교감신경은 동공산대근을 수축시켜 동공을 확장(Dilate), 부교감신경은 동공괄약근을 수축시켜 동공을 축소(Constrict)합니다." },
+  { ch:"7장 감각계통", q:"원뿔세포가 밀집되어 빛을 수용하는 부위는?", a:"중심오목(Central fovea)", opts:["중심오목(Central fovea)","시각신경원반(Optic disc)","맹점","황반"], expl:"중심오목(Central fovea)은 원뿔세포가 가장 밀집되어 시력이 가장 선명한 곳입니다." },
+  { ch:"7장 감각계통", q:"막대세포와 원뿔세포가 없어서 맹점이라 불리는 부위는?", a:"시각신경원반(Optic disc)", opts:["시각신경원반(Optic disc)","중심오목(Central fovea)","황반","망막색소상피"], expl:"시각신경원반은 시각신경이 모여 나가는 곳으로 광수용기가 없어 맹점이 됩니다." },
+  { ch:"7장 감각계통", q:"시각반사가 일어나는 뇌의 부위는?", a:"위둔덕(Superior colliculus)", opts:["위둔덕(Superior colliculus)","아래둔덕(Inferior colliculus)","측두엽","후두엽"], expl:"중간뇌의 위둔덕(Superior colliculus)이 시각반사를 담당합니다." },
+  { ch:"7장 감각계통", q:"귓속뼈 3종류를 올바르게 나열한 것은?", a:"망치뼈(Malleus), 모루뼈(Incus), 등자뼈(Stapes)", opts:["망치뼈(Malleus), 모루뼈(Incus), 등자뼈(Stapes)","안뜰, 달팽이관, 반고리관","고막, 귓바퀴, 귓속뼈","모루뼈, 달팽이, 안뜰창"], expl:"가운데 귀의 3가지 귓속뼈: 망치뼈(Malleus) → 모루뼈(Incus) → 등자뼈(Stapes)" },
+  { ch:"7장 감각계통", q:"회전평형감각을 담당하는 속귀의 부위는?", a:"반고리뼈관(Semicircular canals)", opts:["반고리뼈관(Semicircular canals)","안뜰(Vestibule)","달팽이관(Cochlea)","나선기관(Spiral organ)"], expl:"반고리관(Semicircular canals)은 회전 가속도를 감지하며 회전평형감각을 담당합니다." },
+  { ch:"7장 감각계통", q:"청각겉질이 있는 뇌의 부위는?", a:"측두엽(Temporal lobe)", opts:["측두엽(Temporal lobe)","후두엽(Occipital lobe)","전두엽(Frontal lobe)","두정엽(Parietal lobe)"], expl:"청각겉질(Auditory cortex)은 측두엽(Temporal lobe)에 위치합니다." },
+
+  // 8장 내분비계통
+  { ch:"8장 내분비계통", q:"도관없이 혈액으로 호르몬을 분비하는 샘은?", a:"내분비샘(Endocrine gland)", opts:["내분비샘(Endocrine gland)","외분비샘(Exocrine gland)","침샘(Salivary gland)","땀샘(Sweat gland)"], expl:"내분비샘은 도관이 없고 호르몬을 혈액이나 사이질액으로 직접 분비합니다." },
+  { ch:"8장 내분비계통", q:"뇌하수체뒤엽에서 분비되는 호르몬 2종류는?", a:"항이뇨호르몬(ADH), 옥시토신(Oxytocin)", opts:["항이뇨호르몬(ADH), 옥시토신(Oxytocin)","성장호르몬, 프로락틴","갑상샘자극호르몬, 부신겉질자극호르몬","여포자극호르몬, 황체형성호르몬"], expl:"뇌하수체뒤엽(신경뇌하수체)은 ADH와 옥시토신을 분비합니다. (시상하부에서 생산)" },
+  { ch:"8장 내분비계통", q:"Thyroxine(T4)과 Calcitonin을 분비하는 내분비샘은?", a:"갑상샘(Thyroid gland)", opts:["갑상샘(Thyroid gland)","부갑상샘(Parathyroid gland)","부신(Adrenal gland)","췌장(Pancreas)"], expl:"갑상샘(Thyroid gland)은 후두 아래에 위치하며 T4, T3, 칼시토닌을 분비합니다." },
+  { ch:"8장 내분비계통", q:"혈중 칼슘농도를 높이는 PTH를 분비하는 샘은?", a:"부갑상샘(Parathyroid gland)", opts:["부갑상샘(Parathyroid gland)","갑상샘(Thyroid gland)","부신(Adrenal gland)","뇌하수체(Pituitary gland)"], expl:"부갑상샘호르몬(PTH)은 혈중 칼슘을 높이고, 갑상샘의 칼시토닌은 낮춥니다." },
+  { ch:"8장 내분비계통", q:"Insulin과 Glucagon을 분비하는 내분비샘은?", a:"췌장(Pancreas)", opts:["췌장(Pancreas)","간(Liver)","부신(Adrenal gland)","갑상샘(Thyroid gland)"], expl:"이자섬(랑게르한스섬)의 베타세포에서 인슐린, 알파세포에서 글루카곤을 분비합니다." },
+  { ch:"8장 내분비계통", q:"부신겉질(Adrenal cortex)을 바깥부터 3부분으로 나열한 것은?", a:"토리층 → 다발층 → 그물층", opts:["토리층 → 다발층 → 그물층","그물층 → 다발층 → 토리층","다발층 → 토리층 → 그물층","토리층 → 그물층 → 다발층"], expl:"부신겉질은 바깥부터 토리층(알도스테론)→다발층(코르티솔)→그물층(성호르몬) 순입니다." },
+  { ch:"8장 내분비계통", q:"에너지 균형을 조절하는 코르티솔을 분비하는 부신 부위는?", a:"다발층(Zona fasciculata)", opts:["다발층(Zona fasciculata)","토리층(Zona glomerulosa)","그물층(Zona reticularis)","부신속질(Adrenal medulla)"], expl:"다발층(Zona fasciculata)에서 코르티솔(당류코르티코이드)을 분비합니다." },
+
+  // 9장 순환계통
+  { ch:"9장 순환계통", q:"해부학적으로 심장이 위치하는 곳은?", a:"가슴세로칸(Mediastinum)", opts:["가슴세로칸(Mediastinum)","왼쪽 흉강","오른쪽 흉강","복강"], expl:"심장은 가슴세로칸(Mediastinum)의 중앙, 약간 왼쪽에 위치합니다." },
+  { ch:"9장 순환계통", q:"혈액의 유형성분 중에서 핵이 없는 것은?", a:"적혈구(RBC), 혈소판(Platelet)", opts:["적혈구(RBC), 혈소판(Platelet)","백혈구(WBC), 혈소판","적혈구(RBC), 백혈구(WBC)","단핵구, 림프구"], expl:"성숙한 적혈구와 혈소판은 핵이 없습니다. 백혈구는 핵이 있습니다." },
+  { ch:"9장 순환계통", q:"오른심방으로 유입되는 3개의 혈관은?", a:"위대정맥, 아래대정맥, 심장정맥굴", opts:["위대정맥, 아래대정맥, 심장정맥굴","폐동맥, 폐정맥, 관상동맥","대동맥, 폐동맥, 위대정맥","왼폐정맥, 오른폐정맥, 아래대정맥"], expl:"오른심방 유입: 위대정맥(SVC), 아래대정맥(IVC), 심장정맥굴(Coronary sinus)" },
+  { ch:"9장 순환계통", q:"심장전도계통의 올바른 순서는?", a:"굴심방결절 → 방실결절 → 방실다발 → 심장전도근섬유", opts:["굴심방결절 → 방실결절 → 방실다발 → 심장전도근섬유","방실결절 → 굴심방결절 → 방실다발 → 심장전도근섬유","방실다발 → 굴심방결절 → 방실결절 → 심장전도근섬유","심장전도근섬유 → 방실다발 → 방실결절 → 굴심방결절"], expl:"전도계통: SA결절(페이스메이커)→AV결절→방실다발(His)→다발갈래→푸르킨예섬유" },
+  { ch:"9장 순환계통", q:"대동맥활에서 분지되는 3개의 혈관은?", a:"팔머리동맥, 왼목동맥, 왼빗장밑동맥", opts:["팔머리동맥, 왼목동맥, 왼빗장밑동맥","오른목동맥, 왼목동맥, 척추동맥","관상동맥, 팔머리동맥, 왼빗장밑동맥","폐동맥, 대동맥, 왼목동맥"], expl:"대동맥궁에서: 팔머리동맥(Brachiocephalic) - 왼총경동맥 - 왼빗장밑동맥 순으로 분지됩니다." },
+  { ch:"9장 순환계통", q:"대뇌동맥고리(Willis 동맥고리) 구성 혈관이 아닌 것은?", a:"척추동맥(Vertebral artery)", opts:["척추동맥(Vertebral artery)","앞대뇌동맥(ACA)","뒤대뇌동맥(PCA)","앞교통동맥(ACoA)"], expl:"Willis 동맥고리: 속목동맥, 앞대뇌동맥, 뒤대뇌동맥, 앞교통동맥, 뒤교통동맥으로 구성됩니다. 척추동맥은 구성 혈관이 아닙니다." },
+  { ch:"9장 순환계통", q:"맥박 촉지에 주로 이용되는 혈관은?", a:"노동맥(Radial artery)", opts:["노동맥(Radial artery)","위팔동맥(Brachial artery)","자동맥(Ulnar artery)","넙다리동맥(Femoral artery)"], expl:"손목 엄지 쪽의 노동맥(Radial artery)이 맥박 측정에 가장 많이 사용됩니다." },
+  { ch:"9장 순환계통", q:"혈압 측정에 주로 이용되는 혈관은?", a:"위팔동맥(Brachial artery)", opts:["위팔동맥(Brachial artery)","노동맥(Radial artery)","자동맥(Ulnar artery)","관상동맥(Coronary artery)"], expl:"혈압계 커프를 상완에 대고 위팔동맥(Brachial artery)의 소리를 청진합니다." },
+  { ch:"9장 순환계통", q:"림프관 중에서 가장 큰 것은?", a:"가슴림프관(Thoracic duct)", opts:["가슴림프관(Thoracic duct)","오른림프관","젖가슴림프관","겨드랑림프관"], expl:"가슴림프관(Thoracic duct)은 인체에서 가장 큰 림프관으로 왼정맥각으로 유입됩니다." },
+  { ch:"9장 순환계통", q:"림프기관 중에서 가장 큰 것은?", a:"지라(Spleen)", opts:["지라(Spleen)","흉선(Thymus)","림프절(Lymph node)","편도(Tonsil)"], expl:"지라(Spleen)는 인체에서 가장 큰 림프기관으로 혈액 여과와 면역기능을 합니다." },
+
+  // 10장 호흡계통
+  { ch:"10장 호흡계통", q:"호흡계통의 기능적 단위는?", a:"허파꽈리(Alveolus)", opts:["허파꽈리(Alveolus)","종말세기관지(Terminal bronchiole)","호흡세기관지","기관지(Bronchus)"], expl:"허파꽈리(Alveolus)는 가스 교환이 일어나는 호흡계통의 기능적 단위입니다." },
+  { ch:"10장 호흡계통", q:"허파꽈리에서 계면활성제를 분비하는 세포는?", a:"2형 허파꽈리세포(Type II alveolar cell)", opts:["2형 허파꽈리세포(Type II alveolar cell)","1형 허파꽈리세포(Type I)","먼지세포(Dust cell)","섬모원주상피세포"], expl:"2형 허파꽈리세포는 계면활성제(Surfactant)를 분비하여 허파꽈리의 표면장력을 낮춥니다." },
+  { ch:"10장 호흡계통", q:"허파꽈리에서 식균작용을 하는 세포는?", a:"먼지세포(Dust cell)", opts:["먼지세포(Dust cell)","2형 허파꽈리세포","1형 허파꽈리세포","섬유아세포"], expl:"먼지세포(폐포대식세포)는 허파꽈리 내의 이물질과 세균을 식균(포식)합니다." },
+  { ch:"10장 호흡계통", q:"들숨근육에 해당하는 것은?", a:"가로막(Diaphragm), 바깥갈비사이근", opts:["가로막(Diaphragm), 바깥갈비사이근","속갈비사이근, 배가로근","배바깥빗근, 배곧은근","모두 날숨근육"], expl:"들숨: 가로막+바깥갈비사이근. 날숨: 속갈비사이근, 배근육군(복압 증가)." },
+  { ch:"10장 호흡계통", q:"호흡계통의 전도부위 도관이 끝나는 부위는?", a:"종말세기관지(Terminal bronchiole)", opts:["종말세기관지(Terminal bronchiole)","호흡세기관지(Respiratory bronchiole)","허파꽈리관(Alveolar duct)","허파꽈리(Alveolus)"], expl:"종말세기관지까지가 전도부위이고, 그 이후 호흡세기관지부터가 가스교환(호흡)부위입니다." },
+
+  // 11장 소화계통
+  { ch:"11장 소화계통", q:"위창자관의 4층 순서는?", a:"점막 → 점막밑층 → 근육층 → 장막", opts:["점막 → 점막밑층 → 근육층 → 장막","장막 → 근육층 → 점막밑층 → 점막","점막 → 근육층 → 점막밑층 → 장막","근육층 → 점막 → 점막밑층 → 장막"], expl:"소화관 벽은 안쪽부터 점막(Mucosa)→점막밑층(Submucosa)→근육층(Muscularis)→장막(Serosa) 순입니다." },
+  { ch:"11장 소화계통", q:"위샘에서 염산(HCl)을 분비하는 세포는?", a:"벽세포(Parietal cell)", opts:["벽세포(Parietal cell)","으뜸세포(Chief cell)","점액경세포","G세포"], expl:"벽세포(Parietal cell)는 HCl을 분비하며, 으뜸세포(Chief cell)는 펩시노겐을 분비합니다." },
+  { ch:"11장 소화계통", q:"소장에서 흡수 표면적을 최대로 넓혀주는 구조가 아닌 것은?", a:"복막주렁(Epiploic appendage)", opts:["복막주렁(Epiploic appendage)","미세융모(Microvilli)","장융모(Villi)","돌림주름(Circular fold)"], expl:"소장의 표면적 증가: 돌림주름→장융모→미세융모. 복막주렁은 대장의 특징입니다." },
+  { ch:"11장 소화계통", q:"간의 기능적 단위는?", a:"간소엽(Hepatic lobule)", opts:["간소엽(Hepatic lobule)","간세동이(Hepatic triad)","간문맥(Portal vein)","중심정맥(Central vein)"], expl:"간의 기능적 단위는 간소엽(Hepatic lobule)이며, 중심에 중심정맥이 위치합니다." },
+  { ch:"11장 소화계통", q:"Brunner's gland가 있는 소화기관은?", a:"십이지장(Duodenum)", opts:["십이지장(Duodenum)","빈창자(Jejunum)","돌창자(Ileum)","맹장(Cecum)"], expl:"Brunner 샘(십이지장샘)은 십이지장 점막밑층에 있으며 알칼리성 점액을 분비합니다." },
+  { ch:"11장 소화계통", q:"대장에서만 볼 수 있는 외부형태적 특징이 아닌 것은?", a:"미세융모(Microvilli)", opts:["미세융모(Microvilli)","복막주렁(Epiploic appendage)","잘록창자띠(Tenia coli)","잘록창자팽대(Haustra)"], expl:"대장의 특징: 복막주렁, 잘록창자띠(세로근육띠), 잘록창자팽대(팽출). 미세융모는 소장의 특징입니다." },
+  { ch:"11장 소화계통", q:"대장 구성을 올바른 순서로 나열한 것은?", a:"맹장→상행결장→횡행결장→하행결장→S상결장→직장→항문", opts:["맹장→상행결장→횡행결장→하행결장→S상결장→직장→항문","직장→S상결장→하행결장→횡행결장→상행결장→맹장","맹장→횡행결장→상행결장→하행결장→직장","상행결장→맹장→횡행결장→하행결장→직장"], expl:"대장 순서: 맹장(Cecum)→상행→횡행→하행→S상결장(Sigmoid)→직장(Rectum)→항문(Anus)" },
+
+  // 12장 비뇨계통
+  { ch:"12장 비뇨계통", q:"요를 생산하는 신장의 기능적 단위는?", a:"네프론(Nephron)", opts:["네프론(Nephron)","집합세관","헨레고리","토리(사구체)"], expl:"네프론(Nephron)은 신장의 기능적 단위로 여과, 재흡수, 분비를 통해 소변을 만듭니다." },
+  { ch:"12장 비뇨계통", q:"신장 속질(Medulla)에 위치하는 것은?", a:"헨레고리(Loop of Henle)", opts:["헨레고리(Loop of Henle)","토리쪽곱슬세관","먼쪽곱슬세관","보먼주머니"], expl:"헨레고리(Loop of Henle)는 신장의 속질(Medulla)에 위치하며 농도구배를 형성합니다." },
+  { ch:"12장 비뇨계통", q:"방광의 요를 체외로 배출하는 관은?", a:"요도(Urethra)", opts:["요도(Urethra)","요관(Ureter)","집합세관","방광삼각"], expl:"요도(Urethra)는 방광에서 체외로 소변을 배출합니다. 남성은 더 길고 3부분으로 구성됩니다." },
+  { ch:"12장 비뇨계통", q:"요도의 조임근 중 민무늬근육으로 구성된 것은?", a:"속요도조임근(Internal urethral sphincter)", opts:["속요도조임근(Internal urethral sphincter)","바깥요도조임근(External urethral sphincter)","방광삼각근육","배뇨근"], expl:"속요도조임근은 민무늬근(불수의근), 바깥요도조임근은 뼈대근(수의근)으로 구성됩니다." },
+
+  // 13장 생식계통
+  { ch:"13장 생식계통", q:"정자를 성숙·저장·정관으로 운반하는 남성생식기관은?", a:"부고환(Epididymis)", opts:["부고환(Epididymis)","고환(Testis)","정관(Vas deferens)","전립샘(Prostate gland)"], expl:"부고환(Epididymis)은 고환 뒤에 위치하며 정자의 성숙, 저장, 이동 통로입니다." },
+  { ch:"13장 생식계통", q:"수정란(포배)의 착상 장소를 제공하는 이차 성기관은?", a:"자궁내막(Endometrium)", opts:["자궁내막(Endometrium)","난소(Ovary)","자궁관(Uterine tube)","질(Vagina)"], expl:"수정란은 자궁내막(Endometrium)에 착상합니다. 월경 시 자궁내막 기능층이 탈락합니다." },
+  { ch:"13장 생식계통", q:"남녀 생식기의 상동기관으로 올바르게 연결된 것은?", a:"고환(Testis) ↔ 난소(Ovary)", opts:["고환(Testis) ↔ 난소(Ovary)","음경(Penis) ↔ 질(Vagina)","전립샘 ↔ 자궁","음낭 ↔ 음핵"], expl:"상동기관: 고환-난소, 음경-음핵, 음낭-대음순. 이는 발생학적으로 동일한 조직에서 기원합니다." },
+  { ch:"13장 생식계통", q:"자궁벽의 3층 구조는?", a:"자궁속막, 자궁근육층, 자궁바깥막", opts:["자궁속막, 자궁근육층, 자궁바깥막","점막, 점막밑층, 근육층","속막, 중간막, 바깥막","기능층, 기저층, 근육층"], expl:"자궁벽: 자궁속막(Endometrium) - 자궁근육층(Myometrium) - 자궁바깥막(Perimetrium)" },
+  { ch:"13장 생식계통", q:"배란된 난자를 자궁으로 수송하며 수정이 일어나는 장소는?", a:"자궁관팽대(Ampulla of uterine tube)", opts:["자궁관팽대(Ampulla of uterine tube)","자궁바닥(Fundus)","난소(Ovary)","자궁목(Cervix)"], expl:"수정은 자궁관팽대(Ampulla)에서 주로 일어나며, 수정란은 자궁으로 이동합니다." },
+];
+
+// ════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════
+const categories = ["전체", "6장 신경계통", "7장 감각계통", "8장 내분비계통", "9장 순환계통", "10장 호흡계통", "11장 소화계통", "12장 비뇨계통", "13장 생식계통"];
+let currentCat = "전체";
+let filteredQ = [];
+let idx = 0;
+let answered = false;
+let correctCount = 0;
+let wrongCount = 0;
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length-1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i+1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function getQuestions() {
+  if (currentCat === "전체") return shuffle(RAW);
+  return shuffle(RAW.filter(q => q.ch === currentCat));
+}
+
+// ════════════════════════════════════════════
+// RENDER
+// ════════════════════════════════════════════
+function renderCats() {
+  const wrap = document.getElementById('catScroll');
+  wrap.innerHTML = '';
+  categories.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'cat-btn' + (c === currentCat ? ' active' : '');
+    const count = c === '전체' ? RAW.length : RAW.filter(q=>q.ch===c).length;
+    btn.textContent = c === '전체' ? `전체 (${count})` : c.replace('장 ','장\n') + ` (${count})`;
+    btn.onclick = () => { currentCat = c; restart(); renderCats(); };
+    wrap.appendChild(btn);
+  });
+}
+
+function renderQuestion() {
+  if (idx >= filteredQ.length) { showResult(); return; }
+  answered = false;
+  const q = filteredQ[idx];
+
+  document.getElementById('qChapter').textContent = q.ch;
+  document.getElementById('qNum').textContent = `#${String(idx+1).padStart(3,'0')}`;
+  document.getElementById('qText').textContent = q.q;
+  document.getElementById('explanation').style.display = 'none';
+  document.getElementById('nextBtn').classList.remove('visible');
+
+  // progress
+  const total = filteredQ.length;
+  document.getElementById('progressLabel').textContent = `${idx+1} / ${total}`;
+  document.getElementById('progressFill').style.width = `${(idx/total)*100}%`;
+  document.getElementById('scoreC').textContent = `✓ ${correctCount}`;
+  document.getElementById('scoreW').textContent = `✗ ${wrongCount}`;
+
+  // shuffle opts
+  const shuffled = shuffle(q.opts);
+  const letters = ['A','B','C','D'];
+  const optWrap = document.getElementById('options');
+  optWrap.innerHTML = '';
+  shuffled.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn';
+    btn.innerHTML = `<span class="opt-letter">${letters[i]}</span><span class="opt-text">${opt}</span>`;
+    btn.onclick = (e) => handleAnswer(e, btn, opt, q);
+    optWrap.appendChild(btn);
+  });
+
+  // card animation
+  const card = document.getElementById('questionCard');
+  card.style.animation = 'none';
+  requestAnimationFrame(() => { card.style.animation = 'cardIn 0.4s cubic-bezier(.34,1.56,.64,1)'; });
+}
+
+function handleAnswer(e, btn, chosen, q) {
+  if (answered) return;
+  answered = true;
+
+  // ripple
+  const ripple = document.createElement('span');
+  ripple.className = 'ripple';
+  const rect = btn.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height) * 2;
+  ripple.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX-rect.left-size/2}px;top:${e.clientY-rect.top-size/2}px;background:${chosen===q.a?'#00e5a0':'#ff4d6d'}`;
+  btn.appendChild(ripple);
+  setTimeout(() => ripple.remove(), 500);
+
+  const isCorrect = chosen === q.a;
+  if (isCorrect) { correctCount++; btn.classList.add('correct'); }
+  else {
+    wrongCount++;
+    btn.classList.add('wrong');
+    // show correct
+    document.querySelectorAll('.opt-btn').forEach(b => {
+      if (b !== btn && b.querySelector('.opt-text').textContent === q.a) b.classList.add('show-correct');
+    });
+  }
+
+  // disable all
+  document.querySelectorAll('.opt-btn').forEach(b => b.classList.add('answered'));
+
+  // explanation
+  const expl = document.getElementById('explanation');
+  document.getElementById('explText').textContent = q.expl;
+  document.getElementById('explAnswer').textContent = `정답: ${q.a}`;
+  expl.style.display = 'block';
+
+  document.getElementById('nextBtn').classList.add('visible');
+  document.getElementById('scoreC').textContent = `✓ ${correctCount}`;
+  document.getElementById('scoreW').textContent = `✗ ${wrongCount}`;
+}
+
+document.getElementById('nextBtn').onclick = () => {
+  idx++;
+  renderQuestion();
+  window.scrollTo({top: document.querySelector('.progress-wrap').offsetTop - 10, behavior:'smooth'});
+};
+
+function showResult() {
+  document.getElementById('cardWrap').style.display = 'none';
+  document.getElementById('progressWrap').style.display = 'none';
+  const total = filteredQ.length;
+  const rate = total ? Math.round(correctCount/total*100) : 0;
+  const res = document.getElementById('resultScreen');
+  res.classList.add('show');
+  document.getElementById('resultScore').textContent = rate + '%';
+  document.getElementById('statC').textContent = correctCount;
+  document.getElementById('statW').textContent = wrongCount;
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statRate').textContent = rate + '%';
+  let emoji = '😅', title = '다시 도전해봐요!';
+  if (rate >= 90) { emoji = '🏆'; title = '완벽합니다!'; }
+  else if (rate >= 70) { emoji = '🎉'; title = '훌륭해요!'; }
+  else if (rate >= 50) { emoji = '💪'; title = '절반 이상!'; }
+  document.getElementById('resultEmoji').textContent = emoji;
+  document.getElementById('resultTitle').textContent = title;
+  document.getElementById('resultSub').textContent = `총 ${total}문제 중 ${correctCount}문제 정답!`;
+}
+
+function restart() {
+  correctCount = 0; wrongCount = 0; idx = 0;
+  filteredQ = getQuestions();
+  document.getElementById('resultScreen').classList.remove('show');
+  document.getElementById('cardWrap').style.display = '';
+  document.getElementById('progressWrap').style.display = '';
+  renderQuestion();
+}
+
+// ════════════════════════════════════════════
+// PARTICLE BACKGROUND
+// ════════════════════════════════════════════
+(function() {
+  const canvas = document.getElementById('canvas-bg');
+  const ctx = canvas.getContext('2d');
+  let W, H, dots = [];
+  function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+  for (let i = 0; i < 60; i++) {
+    dots.push({ x: Math.random()*W, y: Math.random()*H, r: Math.random()*1.5+0.3, vx: (Math.random()-.5)*0.3, vy: (Math.random()-.5)*0.3, op: Math.random()*0.5+0.1 });
+  }
+  function draw() {
+    ctx.clearRect(0,0,W,H);
+    dots.forEach(d => {
+      d.x += d.vx; d.y += d.vy;
+      if (d.x < 0) d.x = W; if (d.x > W) d.x = 0;
+      if (d.y < 0) d.y = H; if (d.y > H) d.y = 0;
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, d.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(108,99,255,${d.op})`;
+      ctx.fill();
+    });
+    // connect nearby
+    for (let i = 0; i < dots.length; i++) {
+      for (let j = i+1; j < dots.length; j++) {
+        const dx = dots[i].x - dots[j].x, dy = dots[i].y - dots[j].y;
+        const dist = Math.sqrt(dx*dx+dy*dy);
+        if (dist < 120) {
+          ctx.beginPath();
+          ctx.moveTo(dots[i].x, dots[i].y);
+          ctx.lineTo(dots[j].x, dots[j].y);
+          ctx.strokeStyle = `rgba(108,99,255,${0.15*(1-dist/120)})`;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════
+window.onload = () => {
+  setTimeout(() => {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    renderCats();
+    filteredQ = getQuestions();
+    renderQuestion();
+  }, 800);
+};
+</script>
+</body>
+</html>
