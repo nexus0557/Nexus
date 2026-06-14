@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>IPE CBT</title>
+
+<link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- 헤더 -->
+    <header>
+
+        <h1>IPE CBT</h1>
+
+        <div class="stats">
+
+            <div class="progress-box">
+
+                <span id="progressText">
+                    시험을 시작하세요
+                </span>
+
+            </div>
+
+        </div>
+
+    </header>
+
+    <!-- 메뉴 -->
+
+    <section class="menu">
+
+        <button id="startExamBtn">
+            시험 시작
+        </button>
+
+        <button id="weakBtn">
+            약점 공략
+        </button>
+
+        <button id="wrongBtn">
+            오답 노트
+        </button>
+
+    </section>
+
+    <!-- 진행률 -->
+
+    <section class="progress-wrap">
+
+        <div
+            id="progressBar"
+            class="progress-bar">
+        </div>
+
+    </section>
+
+    <!-- 문제 카드 -->
+
+    <section
+        id="quizCard"
+        class="quiz-card">
+
+        <div
+            id="chapter"
+            class="chapter">
+
+            챕터
+
+        </div>
+
+        <h2 id="question">
+
+            시험 시작 버튼을 눌러주세요.
+
+        </h2>
+
+        <div
+        id="choices"
+        class="choices">
+    
+    </div>
+    
+    <div
+        id="feedback"
+        class="feedback hidden">
+    </div>
+    
+    <div
+        id="explanation"
+        class="explanation hidden">
+    </div>
+
+    </section>
+
+    <!-- 이동 버튼 -->
+
+    <section class="nav">
+
+        <button id="prevBtn">
+            이전
+        </button>
+
+        <button id="nextBtn">
+            다음
+        </button>
+
+    </section>
+
+    <!-- 제출 -->
+
+    <section class="submit-wrap">
+
+        <button id="submitBtn">
+            시험 제출
+        </button>
+
+    </section>
+
+</div>
+
+<!-- 결과 모달 -->
+
+<div
+    id="resultModal"
+    class="modal hidden">
+
+    <div class="result-card">
+
+        <h2>
+            시험 결과
+        </h2>
+
+        <div id="score">
+
+        </div>
+
+        <div id="chapterResult">
+
+        </div>
+
+        <div class="result-buttons">
+
+            <button
+                id="restartBtn">
+
+                다시 시험
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- 오답노트 모달 -->
+
+<div
+    id="wrongModal"
+    class="modal hidden">
+
+    <div class="result-card">
+
+        <h2>
+            오답 노트
+        </h2>
+
+        <div id="wrongList">
+
+        </div>
+
+        <button
+            id="closeWrongBtn">
+
+            닫기
+
+        </button>
+
+    </div>
+
+</div>
+
+<!-- 로딩 -->
+
+<div
+    id="loading"
+    class="hidden">
+
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>
