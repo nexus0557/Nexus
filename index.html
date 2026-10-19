@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>인간심리 종합 모의고사</title>
+    <!-- 웹 폰트 적용 (Pretendard) -->
+    <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
+    <style>
+        :root {
+            --primary: #4A90E2;
+            --bg: #F5F7FA;
+            --text: #333333;
+            --card-bg: #FFFFFF;
+            --correct: #2ECC71;
+            --wrong: #E74C3C;
+            --hover: #E3E8EE;
+        }
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .app-container {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 600px;
+            min-height: 400px;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+            padding: 2.5rem 2rem;
+            box-sizing: border-box;
+            position: relative;
+        }
+        h1 { text-align: center; color: var(--primary); font-size: 1.8rem; margin-bottom: 0.5rem; }
+        .subtitle { text-align: center; color: #7f8c8d; font-size: 0.95rem; margin-bottom: 2rem; line-height: 1.5; }
+        .btn {
+            width: 100%;
+            padding: 16px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.05rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            word-break: keep-all;
+            line-height: 1.4;
+        }
+        .btn-primary { background: var(--primary); color: white; font-weight: 600; font-size: 1.1rem; margin-top: 1rem;}
+        .btn-primary:hover { background: #357ABD; }
+        
+        .btn-option { background: var(--bg); color: var(--text); text-align: left; border: 2px solid transparent; }
+        .btn-option:hover:not(:disabled) { background: var(--hover); }
+        .btn-option:disabled { cursor: default; }
+        
+        .correct { background: var(--correct) !important; color: white !important; font-weight: bold; border-color: var(--correct) !important;}
+        .wrong { background: var(--wrong) !important; color: white !important; border-color: var(--wrong) !important;}
+        
+        .screen { display: none; }
+        .screen.active { display: block; animation: fadeIn 0.4s ease; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .progress-container { width: 100%; background: var(--bg); height: 8px; border-radius: 4px; margin-bottom: 1.5rem; overflow: hidden;}
+        .progress-bar { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s ease; }
+        
+        .chapter-tag { display: inline-block; background: #EBF3FC; color: var(--primary); padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; margin-bottom: 1rem; }
+        .question-text { font-size: 1.25rem; font-weight: 600; margin-bottom: 1.5rem; line-height: 1.5; word-break: keep-all; }
+        .status-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; color: #95a5a6; font-size: 0.9rem; font-weight: 500;}
+        
+        .score-circle {
+            width: 120px; height: 120px; border-radius: 50%; background: var(--bg);
+            display: flex; justify-content: center; align-items: center; margin: 0 auto 1.5rem;
+            font-size: 2rem; font-weight: bold; color: var(--primary); border: 4px solid var(--primary);
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <!-- 시작 화면 -->
+    <div id="screen-start" class="screen active">
+        <h1>🧠 인간심리 종합 퀴즈</h1>
+        <p class="subtitle">사진에서 추출한 총 81개의 핵심 문제 DB가 탑재되었습니다.<br>시작할 때마다 15문제가 무작위로 출제됩니다.</p>
+        <button class="btn btn-primary" onclick="startQuiz()">퀴즈 시작하기</button>
+    </div>
+
+    <!-- 퀴즈 화면 -->
+    <div id="screen-quiz" class="screen">
+        <div class="progress-container"><div class="progress-bar" id="progress-bar"></div></div>
+        <div class="chapter-tag" id="chapter-tag">Chapter</div>
+        <div class="question-text" id="question-text">Question</div>
+        <div id="options-container"></div>
+        <div class="status-bar">
+            <span id="question-counter">1 / 15</span>
+            <span id="score-live">Score: 0</span>
+        </div>
+    </div>
+
+    <!-- 결과 화면 -->
+    <div id="screen-result" class="screen">
+        <h1>🎉 퀴즈 완료!</h1>
+        <p class="subtitle">수고하셨습니다. 최종 점수를 확인하세요.</p>
+        <div class="score-circle" id="final-score">15/15</div>
+        <p id="feedback-message" style="text-align: center; font-weight: 600; margin-bottom: 2rem; line-height: 1.5;"></p>
+        <button class="btn btn-primary" onclick="location.reload()">새로운 15문제 다시 풀기</button>
+    </div>
+</div>
+
+<script>
+    // 사진 10장에 있던 81개의 문제를 모두 추출한 데이터베이스입니다.
+    const quizDatabase = [
+        // --- 1장 심리학의 역사 ---
+        { chapter: "1장 심리학의 역사", q: "마음에 일어나는 모든 정신 과정들이 뇌에서 일어나는 물리적 과정으로 환원된다는 철학적 견해는?", options: ["철학적 유물론", "철학적 생득론", "철학적 경험론", "철학적 실재론"], ans: 0 },
+        { chapter: "1장 심리학의 역사", q: "내성은 어떤 견해의 주요 방법 중 하나인가?", options: ["이원론", "구성주의", "행동주의", "게슈탈트심리학"], ans: 1 },
+        { chapter: "1장 심리학의 역사", q: "기능주의에 가장 큰 영향을 준 사람은?", options: ["스키너", "프로이트", "구성주의", "다윈"], ans: 3 },
+        { chapter: "1장 심리학의 역사", q: "정신분석은 사람들에게 어떤 도움을 주는가?", options: ["의식적 경험의 기본 요소를 분리하도록 한다.", "무의식적 마음에 대한 통찰을 얻도록 한다.", "자극에 반응하도록 한다.", "강화를 획득하게 한다."], ans: 1 },
+        { chapter: "1장 심리학의 역사", q: "존 왓슨이 생각한 행동주의란?", options: ["동물을 연구하는 적절한 방법이지만 사람을 연구하기에는 부적절한 방법이다.", "유기체의 진화 역사를 고려해야 한다.", "심리학을 객관적 과학으로 만드는 것이다.", "사람의 무의식적 마음을 엿볼 수 있다."], ans: 2 },
+        { chapter: "1장 심리학의 역사", q: "존 프레더릭 스키너의 강화원리가 설명하는 것은?", options: ["문화심리학의 출현", "행동이 어떻게 그 결과에 의해 조성되는지", "구성주의가 실패한 이유", "심지어 실제로 존재하지도 않는데 불빛이 움직이는 것처럼 보이는 이유"], ans: 1 },
+        { chapter: "1장 심리학의 역사", q: "1900년대 초반 행동주의에 저항한 미국 심리학자는?", options: ["사회심리학자", "신경과학자", "진화심리학자", "철학적 이원론자"], ans: 0 },
+        { chapter: "1장 심리학의 역사", q: "인지혁명에 불을 지핀 것은?", options: ["촘스키의 프로이트에 대한 비판", "디지털 컴퓨터의 발명", "fMRI의 발명", "스키너 상자의 발명"], ans: 1 },
+        { chapter: "1장 심리학의 역사", q: "쥐가 빠르게 매스꺼움을 음식의 맛에 연합시키는 학습을 한다는 것을 보여준 존 가르시아의 실험의 의의는?", options: ["미국에서 행동주의의 확립에 중요한 역할을 하였다.", "자신의 대학에서 해고당하는 계기가 되었다.", "문화심리학의 출현을 도왔다.", "진화심리학의 출현을 도왔다."], ans: 3 },
+        { chapter: "1장 심리학의 역사", q: "21세기에 등장한 두 가지 새로운 심리학 분야는 무엇인가?", options: ["행동신경과학과 진화심리학", "인지신경과학과 문화심리학", "게슈탈트심리학과 발달심리학", "사회심리학과 문화심리학"], ans: 0 },
+        { chapter: "1장 심리학의 역사", q: "1800년대에 프랑스 의사인 폴 브로카가 연구한 것은 무엇인가?", options: ["동물과 인간의 연계성", "마음과 뇌의 연계성", "뇌 크기와 정신적 능력의 연계성", "두개골 함몰과 심리적 속성의 연계성"], ans: 1 },
+        { chapter: "1장 심리학의 역사", q: "헤르만 폰 헬름홀츠가 수행한 유명한 실험의 주제는 무엇인가?", options: ["반응시간", "아동기 학습", "골상학", "특정 뇌 영역의 기능"], ans: 0 },
+        { chapter: "1장 심리학의 역사", q: "다음 중 윌리엄 제임스가 지지한 정신적 과정이 사람들의 환경 적응을 돕는 목적을 가진 연구는?", options: ["경험주의", "생득론", "구성주의", "기능주의"], ans: 3 },
+        { chapter: "1장 심리학의 역사", q: "케네스 클라크에 대한 다음 진술 중 옳은 것은?", options: ["미국 대법원이 공립학교 분리 정책을 위헌으로 판결하는 데 영향을 준 연구를 했다.", "APA 창립자 중 한 사람이다.", "윌리엄 제임스의 제자이다.", "아프리카계 미국 아이들을 대상으로 연구를 수행했다."], ans: 0 },
+
+        // --- 4장 감각과 지각 ---
+        { chapter: "4장 감각과 지각", q: "감각은 ____와(과) 관련된 반면 지각은 ____와(과) 관련된다.", options: ["조직화, 조정", "자극, 해석", "식별, 번역", "이해, 정보"], ans: 1 },
+        { chapter: "4장 감각과 지각", q: "어떤 과정이 환경의 물리적 신호들을, 감각 뉴런이 중추신경계로 전달하는 신경 신호로 바꾸는가?", options: ["표상", "식별", "전파", "변환"], ans: 3 },
+        { chapter: "4장 감각과 지각", q: "자극을 겨우 탐지하는 데 필요한 최소한의 강도를 무엇이라 하는가?", options: ["비례적 크기", "절대역", "최소가치차이", "베버의 법칙"], ans: 1 },
+        { chapter: "4장 감각과 지각", q: "망막을 두드리는 빛은 세 종류의 추상체에 특정한 패턴의 반응을 일으킴으로써, 다음 중 어느 것을 보는 능력을 가능하게 하는가?", options: ["운동", "색채", "깊이", "그림자"], ans: 1 },
+        { chapter: "4장 감각과 지각", q: "뇌의 어떤 부분이, 부호화된 정보가 시각 장면의 표상으로 체계적으로 대응되는, 일차시각피질인가?", options: ["시상", "외측슬상핵", "중심와", "V1 영역"], ans: 3 },
+        { chapter: "4장 감각과 지각", q: "다음 중 어느 것이 후두엽에서 물체가 무엇인지를 식별하는 측두엽의 뇌 영역을 가로질러 이동하는가?", options: ["시신경", "배측 흐름", "복측 흐름", "출입문 제어 경로"], ans: 2 },
+        { chapter: "4장 감각과 지각", q: "상대 크기와 선형 조망은 어떤 종류의 단서들인가?", options: ["운동-기반", "양안", "단안", "형판"], ans: 2 },
+        { chapter: "4장 감각과 지각", q: "음파의 주파수는 무엇을 결정하는가?", options: ["음높이", "음량", "음질", "음색"], ans: 0 },
+        { chapter: "4장 감각과 지각", q: "머리의 반대편에 두 귀가 배치된 것은 다음 어떤 능력에 결정적인가?", options: ["음원 위치 파악하기", "음높이 판정하기", "강도 판단하기", "복잡성을 재인하기"], ans: 0 },
+        { chapter: "4장 감각과 지각", q: "전도성 청력 손상은 다음 어느 것의 손상에 기인하는가?", options: ["귀청 혹은 이소골", "달팽이관 혹은 유모세포", "청신경", "일차청각피질(A1 영역)"], ans: 0 },
+        { chapter: "4장 감각과 지각", q: "신체의 어떤 부분이 체감각 피질에서 가장 큰 영역을 차지하는가?", options: ["종아리", "입술", "허리", "엉덩이"], ans: 1 },
+        { chapter: "4장 감각과 지각", q: "우리가 경험하는 통증의 위치와 유형은 다음 중 어디로 보내진 신호들에 의해 표시되는가?", options: ["편도체", "척수", "통증 수용기", "체감각 피질"], ans: 3 },
+        { chapter: "4장 감각과 지각", q: "귀의 어느 부위가 균형 감각에 핵심적으로 관여하는가?", options: ["귓바퀴", "이소골", "세반고리관", "기저막"], ans: 2 },
+        { chapter: "4장 감각과 지각", q: "냄새가 즉각적이고 강력한 효과를 가지는 이유를 가장 잘 설명하는 것은?", options: ["감정과 기억의 뇌 중추들이 냄새에 관여하는 것", "우리가 가지고 있는 매우 많은 수의 후각 수용기 뉴런", "페로몬으로부터 냄새를 탐지하는 능력", "여러 냄새 분자들이 다양한 패턴의 활동을 낳는다는 사실"], ans: 0 },
+        { chapter: "4장 감각과 지각", q: "입은 대략 얼마나 많은 맛봉오리를 가지고 있는가?", options: ["50~100개", "5,000~1만 개", "5만~10만 개", "100만 개 이상"], ans: 1 },
+
+        // --- 5장 의식 ---
+        { chapter: "5장 의식", q: "다음 중 의식의 기본 속성이 아닌 것은?", options: ["의도", "분열", "선택", "일시성"], ans: 1 },
+        { chapter: "5장 의식", q: "현재 무의식 과정은 다음과 같이 이해되고 있다.", options: ["사고 억제가 농축된 형태", "숨겨진 기억, 본능과 욕구 체계", "빈 슬레이트", "생각과 행동을 생산하는 의식하지 못하는 정신 과정"], ans: 3 },
+        { chapter: "5장 의식", q: "식역하와 무의식 과정이 사고와 행동에 영향을 미칠 때 작용하는 무의식은?", options: ["최소한의", "억압적", "역동적", "인지적"], ans: 2 },
+        { chapter: "5장 의식", q: "수면과 깸의 주기는 인간 생의 주요 양상인데, 이를 무엇이라고 부르는가?", options: ["일주율", "수면 단계", "의식의 변형된 상태", "식역하 지각"], ans: 0 },
+        { chapter: "5장 의식", q: "수면 욕구는 일생에 걸쳐 ____ 한다.", options: ["감소한다", "증가한다", "변동한다", "동일하다"], ans: 0 },
+        { chapter: "5장 의식", q: "꿈을 꾸는 사람은 꿈을 꾸는 동안 일어나는 정서, 사고와 감각의 변화를 ____.", options: ["의심한다.", "완전히 인식하지 못한다.", "무비판적으로 수용한다.", "객관적으로 바라본다."], ans: 2 },
+        { chapter: "5장 의식", q: "수면을 취하는 동안 뇌에서 무작위로 일어나는 신경 활동에 대해 마음이 의미를 부여하고자 할 때 꿈이 생산된다고 주장하는 이론은?", options: ["프로이트의 정신분석 이론", "활성화-통합 모델", "인지적 무의식 모델", "발현내용 프레임워크"], ans: 1 },
+        { chapter: "5장 의식", q: "꿈을 꾸는 뇌를 조사한 fMRI 연구들이 밝히지 않은 것은?", options: ["정서 민감성의 증가", "시각 활동과 관련된 영역의 활성화", "계획 능력의 증가", "움직임의 억제"], ans: 2 },
+        { chapter: "5장 의식", q: "향정신성 약물은 다음 중 어느 것의 효과를 변화시킴으로써 의식에 영향을 주는가?", options: ["효능제", "신경전달물질", "암페타민", "척수 뉴런"], ans: 1 },
+        { chapter: "5장 의식", q: "약물에 대한 내성에 해당되는 것은?", options: ["시간이 지남에 따라 동일한 효과를 얻기 위해 더 많은 양이 요구", "새로운 경험에 대해 개방적", "약물 사용의 초기에 경험하는 끌림", "고통스러운 금단 증상의 감소"], ans: 0 },
+        { chapter: "5장 의식", q: "중추신경계에 작용하여 각성과 활동 수준을 증가시키는 약물은?", options: ["진정제", "자극제", "마약성 진통제", "환각제"], ans: 1 },
+        { chapter: "5장 의식", q: "알코올의 기대란?", options: ["알코올의 초기 효과인 즐거움과 불안 감소", "알코올을 사회적으로 용납되는 물질로 널리 받아들임", "알코올이 복잡한 상황에 대해 단순하게 반응하게 함", "사람들이 특정 상황에서 알코올이 자신들에게 미치는 영향에 관한 믿음"], ans: 3 },
+        { chapter: "5장 의식", q: "최면의 효과로 입증된 것은?", options: ["체력 효과", "기억 인출에 대한 긍정적 효과", "진통 효과", "연령 퇴행 효과"], ans: 2 },
+        { chapter: "5장 의식", q: "다음 중 누가 최면에 가장 덜 민감한가?", options: ["영화 감상에 많은 시간을 보내는 제이크", "자신이 쉽게 최면에 걸린다고 확신하는 아빠", "적극적이고 상상을 잘 하는 에반", "운동을 즐기는 이사벨"], ans: 3 },
+
+        // --- 6장 기억 ---
+        { chapter: "6장 기억", q: "부호화란?", options: ["우리가 지각하고 생각하고 느끼는 것들을 지속하는 기억으로 변환시키는 것", "시간에 걸쳐 정보를 기억에 유지하는 것", "전에 저장한 정보를 마음으로 가져오는 것", "전에 학습했지만 잊힌 정보를 회상하는 것"], ans: 0 },
+        { chapter: "6장 기억", q: "새로운 정보를 이미 기억에 있는 지식에 의미 있게 연결시키는 과정은 무엇인가?", options: ["자발적 부호화", "조직적 부호화", "의미 부호화", "시각적 심상 부호화"], ans: 2 },
+        { chapter: "6장 기억", q: "어떤 종류의 기억 저장이 정보를 1~2초 동안 유지하는가?", options: ["역행 기억", "작업 기억", "단기 기억", "감각 기억"], ans: 3 },
+        { chapter: "6장 기억", q: "기억이 대뇌에서 안정화되는 과정은?", options: ["고정화", "장기기억", "영사기억", "해마 표식"], ans: 0 },
+        { chapter: "6장 기억", q: "장기강화는 어떻게 일어나는가?", options: ["뉴런 간의 소통 방해", "시냅스 연결의 강화", "방해받은 기억의 재고정화", "수면 중 뉴런 재생산"], ans: 1 },
+        { chapter: "6장 기억", q: "여러분이 슬픈 기분일 때 슬픈 기억이 잘 회상되는 것을 무엇이라 하는가?", options: ["부호화 특정성 원리", "상태 의존 인출", "전이 적절 처리", "기억 접근성"], ans: 1 },
+        { chapter: "6장 기억", q: "신경 영상 연구에 따르면, 어떤 것을 기억해 내려고 할 때 어느 부위가 활성화되는가?", options: ["좌측 전두엽", "해마 영역", "두정엽", "상위 측두엽"], ans: 0 },
+        { chapter: "6장 기억", q: "의식적이고 의도적인 과거 경험의 인출 행위는?", options: ["점화", "절차 기억", "암묵 기억", "외현 기억"], ans: 3 },
+        { chapter: "6장 기억", q: "기억 상실증 환자의 기억에서 유지되지 않는 것은?", options: ["성광 기억", "순행 간섭", "시각적 심상 부호화", "외현 기억"], ans: 3 },
+        { chapter: "6장 기억", q: "어린아이 시절 여러분이 갔었던 가족 모임에 대한 기억은?", options: ["일화 기억", "절차 기억", "의미 기억", "지각 점화"], ans: 0 },
+        { chapter: "6장 기억", q: "신속한 기억 감소 후 점진적인 망각이 일어나는 현상이 의미하는 것은?", options: ["군집화", "차단", "방심", "일시성"], ans: 3 },
+        { chapter: "6장 기억", q: "목격자 증언 실수나 틀린 재인은 무엇의 결과인가?", options: ["기억 오귀인", "암시성", "편향", "역행 간섭"], ans: 0 },
+        { chapter: "6장 기억", q: "정서적 각성이 기억을 증가한다는 사실이 지지하는 것은?", options: ["편향", "집착", "순행 간섭", "외현 기억"], ans: 1 },
+
+        // --- 7장 학습 ---
+        { chapter: "7장 학습", q: "고전적 조건형성에서, 조건자극은 무조건자극과 짝지어져서 무엇을 낳는가?", options: ["중성자극", "조건반응", "무조건반응", "다른 조건자극"], ans: 1 },
+        { chapter: "7장 학습", q: "조건자극이 무조건자극과 더 이상 짝지어지지 않을 때 무슨 일이 일어나는가?", options: ["일반화", "자발적 회복", "소거", "획득"], ans: 2 },
+        { chapter: "7장 학습", q: "왓슨과 레이너는 어린 앨버트 실험을 통해 행동주의에 관한 무엇을 시범하려 하였는가?", options: ["조건형성이 어느 정도의 인지를 필요로 한다.", "고전적 조건형성은 진화적 성분을 가지고 있다.", "행동주의만으로는 인간 행동을 설명할 수 없다.", "정서와 같은 세련된 행동조차도 고전적 조건형성의 대상이 된다."], ans: 3 },
+        { chapter: "7장 학습", q: "뇌의 어떤 부분이 공포에 대한 고전적 조건형성에 관여하는가?", options: ["편도체", "소뇌", "해마", "시상하부"], ans: 0 },
+        { chapter: "7장 학습", q: "특정한 종류의 음식에 대해 나쁜 경험을 한 뒤, 사람은 그 음식에 대해 평생 동안의 혐오를 발달시킬 수 있다. 이것은 조건형성이 어떤 측면을 가지고 있음을 시사하는가?", options: ["인지적", "진화적", "신경적", "행동적"], ans: 1 },
+        { chapter: "7장 학습", q: "다음 중 어느 것이 조작적 조건형성에 대한 정확한 진술이 아닌가?", options: ["행동과 결과는 조작적 조건형성에 핵심적이다.", "조작적 조건형성은 행동의 강화를 필요로 한다.", "복잡한 행동은 조작적 조건형성에 의해 설명될 수 없다.", "조작적 조건형성은 진화적 행동에 뿌리를 가지고 있다."], ans: 2 },
+        { chapter: "7장 학습", q: "다음 기제들 중 어느 것이 행동에 대한 스키너의 접근에 아무 역할도 하지 못하는가?", options: ["인지적", "신경적", "진화적", "a, b, c 모두"], ans: 3 },
+        { chapter: "7장 학습", q: "잠재학습은 조작적 조건형성에서 인지적 요소에 대한 증거를 제공하는데, 그 이유는?", options: ["어떤 명백한 강화 없이도 일어나기 때문이다.", "정적 및 부적 강화를 필요로 하기 때문이다.", "신경적 보상 센터의 작동을 가리키기 때문이다.", "자극-반응 관계성에 달려 있기 때문이다."], ans: 0 },
+        { chapter: "7장 학습", q: "다음 중 어느 것이 관찰학습에 대해 사실인가?", options: ["인간은 다른 사람을 관찰하면서 배우지만, 인간이 아닌 동물은 이런 능력이 없는 것 같다.", "만일 아이가 어른이 어떤 행동을 하는 것을 본다면, 그 아이는 그 행동을 흉내 내기 쉽다.", "인간은 관찰보다 시행착오를 통해 복잡한 행동을 더 잘 배운다.", "관찰학습은 같은 종의 개체들 간의 정보 전달에 한정된다."], ans: 1 },
+        { chapter: "7장 학습", q: "어떤 종류의 학습이 정보 획득의 과정과 산물 모두에 대한 자각과 대체로 독립적으로 일어나는가?", options: ["잠재학습", "암묵학습", "관찰학습", "의식학습"], ans: 1 },
+        { chapter: "7장 학습", q: "암묵학습에 관한 다음 진술 중 어느 것이 부정확한가?", options: ["어떤 종류의 학습이 외현적으로 시작하지만 시간이 지나면 더 암묵적이게 된다.", "암묵학습은 가장 단순한 유기체들에서도 일어난다.", "기억상실증이 있는 사람은 암묵학습 과제에 심각한 손상을 보이는 경향이 있다.", "아이들은 대체로 암묵학습을 통해 언어와 사회 행동을 배운다."], ans: 2 },
+        { chapter: "7장 학습", q: "암묵적 지시에 대한 반응은 뇌의 어느 부위에서 뇌 활성화의 감소를 보이는가?", options: ["해마", "두정 피질", "전전두 피질", "후두엽"], ans: 3 },
+        { chapter: "7장 학습", q: "어떤 공부 전략이 가장 효과적인 것으로 보이는가?", options: ["텍스트 강조하기", "다시 읽기", "요약하기", "연습시험 보기"], ans: 3 },
+        { chapter: "7장 학습", q: "다음 중 어느 것이 학습의 판단(JOL)에 대해 사실인가?", options: ["보통 사람들은 그들이 새 학습자료를 얼마나 잘 학습했는지에 대해 훌륭한 판단자이다.", "재료에 대해 친숙한 느낌은 흔히 그 재료가 학습되었는지에 대한 지표이다.", "JOL에 기초해서, 사람들은 보통 그들이 잘 안다고 느끼는 재료를 공부하는 데 더 많은 시간을 쓴다.", "JOL은 학습에 인과적인 영향을 미친다."], ans: 3 },
+        { chapter: "7장 학습", q: "공부의 보조수단으로 스스로 시험 보기의 가치는 부분적으로 다음 어디로부터 오는가?", options: ["재료에 대해 친숙한 느낌의 증가", "최초 학습 동안 주의 유지에 도움", "재료에 대한 수동적인 재노출", "수업 중 신중히 노트할 필요의 감소"], ans: 1 },
+
+        // --- 8장 정서와 동기 ---
+        { chapter: "8장 정서와 동기", q: "정서들은 다음 어떤 두 차원에서의 위치에 의해 묘사될 수 있는가?", options: ["평정과 행위", "각성과 유인가", "본능과 추동", "고통과 즐거움"], ans: 1 },
+        { chapter: "8장 정서와 동기", q: "어떤 이론이 정서는 자신의 일반적 생리적 각성에 대한 사람의 해석이라고 주장하는가?", options: ["공포관리이론", "제임스와 랑게 설", "이요인 이론", "추동 감소 이론"], ans: 2 },
+        { chapter: "8장 정서와 동기", q: "어떤 뇌 구조가 한 자극물이 좋은지 나쁜지에 대한 신속한 평정에 가장 직접적으로 관여하고 있는가?", options: ["피질", "외측 시상하부", "편도체", "복내측 시상하부"], ans: 2 },
+        { chapter: "8장 정서와 동기", q: "____은(는) 사건에 대한 새로운 방식으로 생각하는 것을 포함하는 정서 조절 전략이다.", options: ["감정 명명하기", "강렬화", "억압", "재평정"], ans: 3 },
+        { chapter: "8장 정서와 동기", q: "____은(는) 정서 표현들이 정서 경험을 유발할 수 있다는 생각이다.", options: ["드러내기 규칙", "진화적 불일치", "보편성 가설", "얼굴피드백 가설"], ans: 3 },
+        { chapter: "8장 정서와 동기", q: "쾌락주의 원리가 주장하는 것은?", options: ["미소는 모든 문화에서 같은 것을 의미한다.", "사람들은 쾌락을 경험하고 고통을 피하도록 일차적으로 동기화되어 있다.", "유기체는 추동을 감소시키도록 동기화되어 있다.", "어떤 동기는 선천적으로 회로가 짜여져 있다."], ans: 1 },
+        { chapter: "8장 정서와 동기", q: "특정한 목표를 찾으려는 타고난 경향성을 ____라고 한다.", options: ["본능", "행동 경향성", "무의식적 동기", "평정"], ans: 0 },
+        { chapter: "8장 정서와 동기", q: "매슬로우에 따르면, 가장 기본적인 욕구는?", options: ["자기실현과 자기존중", "다른 동물과 공통적이다", "더 높은 욕구들이 충족될 때까지 경험되지 않는다.", "소속감과 사랑"], ans: 1 },
+        { chapter: "8장 정서와 동기", q: "어떤 진술이 참인가?", options: ["남자와 여자는 여러 가지의 같은 이유로 성 행동에 몰두한다.", "소년과 소녀는 매우 다른 나이에 최초의 성적 흥미를 경험한다.", "DHEA 호르몬은 남성에서 성적 흥미의 출현에 중요한 역할을 하지만 여성에게서는 그렇지 않다.", "인간 남성의 성 추동은 테스토스테론에 의해 조절되는 반면 인간 여성의 성 추동은 에스트로겐에 의해 조절된다."], ans: 0 },
+        { chapter: "8장 정서와 동기", q: "다음 중 어느 것이 보편성 가설을 조금도 지지하지 않는가?", options: ["선천적인 맹인은 기본 정서와 연관된 표정을 짓는다.", "생후 며칠밖에 되지 않은 아기들이 쓴맛에는 혐오 표정으로 반응한다.", "로봇은 정서 표현을 드러낼 수 있도록 만들어져 왔다.", "연구자들은 외부 세계와의 접촉이 거의 없이 격리된 사람들이 서양인들의 정서 표현을 알아본다는 것을 발견했다."], ans: 2 },
+        { chapter: "8장 정서와 동기", q: "다음 진술 중 어느 것이 정확하지 않은가?", options: ["어떤 얼굴 근육은 진실한 표정에 일관되게 관여한다.", "빨리 말하기는 어떤 사람이 거짓말한다고 알리는 믿을 만한 단서가 아니다.", "연구들은 인간의 거짓말 탐지 능력은 매우 좋다는 것을 보여준다.", "폴리그래프는 우연보다 더 좋은 비율로 거짓말을 탐지하지만, 그 오류율은 여전히 꽤 높다."], ans: 2 },
+        { chapter: "8장 정서와 동기", q: "다음 중 어느 것이 심리적 동기가 변동하는 차원이 아닌가?", options: ["내재적-외재적", "의식적-무의식적", "회피-접근", "평정-재평정"], ans: 3 },
+        { chapter: "8장 정서와 동기", q: "다음 활동 중 어느 것이 외재적 동기의 결과와 가장 비슷한가?", options: ["십자말풀이를 완성하기", "음악가로서의 경력을 추구하기", "디저트로 아이스크림을 먹기", "이를 치실로 관리하기"], ans: 3 }
+    ];
+
+    let questionsList = [];
+    let currentIndex = 0;
+    let currentScore = 0;
+    
+    // 플레이 할 때마다 추출할 문제 개수 (15문제 설정)
+    const totalQuestionsToPlay = 15; 
+
+    function startQuiz() {
+        // 전체 81문제를 무작위로 섞은 뒤 15문제만 추출합니다.
+        questionsList = [...quizDatabase].sort(() => 0.5 - Math.random()).slice(0, totalQuestionsToPlay);
+        
+        currentIndex = 0;
+        currentScore = 0;
+        
+        document.getElementById('screen-start').classList.remove('active');
+        document.getElementById('screen-quiz').classList.add('active');
+        showQuestion();
+    }
+
+    function showQuestion() {
+        const q = questionsList[currentIndex];
+        document.getElementById('chapter-tag').innerText = q.chapter;
+        document.getElementById('question-text').innerText = q.q;
+        
+        const optionsContainer = document.getElementById('options-container');
+        optionsContainer.innerHTML = ''; 
+        
+        q.options.forEach((optText, i) => {
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-option';
+            btn.innerText = `${String.fromCharCode(97 + i)}. ${optText}`; 
+            btn.onclick = () => handleAnswer(i, btn);
+            optionsContainer.appendChild(btn);
+        });
+
+        document.getElementById('progress-bar').style.width = ((currentIndex) / questionsList.length) * 100 + '%';
+        document.getElementById('question-counter').innerText = `${currentIndex + 1} / ${questionsList.length}`;
+        document.getElementById('score-live').innerText = `Score: ${currentScore}`;
+    }
+
+    function handleAnswer(selectedIndex, btnElement) {
+        const q = questionsList[currentIndex];
+        const buttons = document.querySelectorAll('.btn-option');
+        
+        buttons.forEach(b => b.disabled = true);
+
+        if (selectedIndex === q.ans) {
+            btnElement.classList.add('correct');
+            currentScore++;
+        } else {
+            btnElement.classList.add('wrong');
+            buttons[q.ans].classList.add('correct');
+        }
+        
+        document.getElementById('score-live').innerText = `Score: ${currentScore}`;
+        document.getElementById('progress-bar').style.width = ((currentIndex + 1) / questionsList.length) * 100 + '%';
+
+        // 정답 확인 후 1.2초 뒤에 다음 문제로 이동
+        setTimeout(() => {
+            currentIndex++;
+            if (currentIndex < questionsList.length) {
+                showQuestion();
+            } else {
+                showResultScreen();
+            }
+        }, 1200);
+    }
+
+    function showResultScreen() {
+        document.getElementById('screen-quiz').classList.remove('active');
+        document.getElementById('screen-result').classList.add('active');
+        
+        const total = questionsList.length;
+        document.getElementById('final-score').innerText = `${currentScore} / ${total}`;
+        
+        let feedback = "";
+        const ratio = currentScore / total;
+        if (ratio === 1) feedback = "만점입니다! 간호학과 인간심리 과목 A+은 확실하네요. 🏥💯";
+        else if (ratio >= 0.8) feedback = "아주 훌륭해요! 조금만 더 복습하면 완벽합니다. ✨";
+        else if (ratio >= 0.5) feedback = "잘 하셨습니다! 헷갈린 개념을 한 번 더 확인해 보세요. 📚";
+        else feedback = "반복 학습이 핵심! 포기하지 말고 다시 도전해 보세요. 💪";
+        
+        document.getElementById('feedback-message').innerText = feedback;
+    }
+</script>
+</body>
+</html>
