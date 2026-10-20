@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>삶과 죽음 완벽 대비 실전 CBT</title>
+    <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
+    <style>
+        :root {
+            --primary: #2C3E50;
+            --secondary: #3498DB;
+            --accent: #E74C3C;
+            --bg: #F4F6F7;
+            --text: #333;
+            --card-bg: #FFF;
+            --correct: #27AE60;
+            --wrong: #E74C3C;
+            --hover: #EDF2F8;
+            --exp-bg: #F0F8FF;
+        }
+        body {
+            font-family: 'Pretendard', -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0; padding: 20px;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh;
+        }
+        .cbt-container {
+            background: var(--card-bg);
+            width: 100%; max-width: 800px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+            padding: 3rem 2.5rem;
+            box-sizing: border-box;
+            border-top: 6px solid var(--secondary);
+        }
+        h1 { text-align: center; color: var(--primary); font-size: 2rem; margin-top: 0; }
+        .subtitle { text-align: center; color: #7F8C8D; line-height: 1.6; margin-bottom: 2rem; font-size: 1.05rem;}
+        
+        .btn {
+            width: 100%; padding: 16px; margin: 8px 0;
+            border: 1px solid #E0E0E0; border-radius: 8px;
+            font-size: 1.1rem; cursor: pointer; transition: all 0.2s;
+            background: #FFF; color: var(--text); text-align: left;
+            word-break: keep-all; line-height: 1.4;
+        }
+        .btn:hover:not(:disabled) { background: var(--hover); border-color: var(--secondary); transform: translateY(-1px); }
+        .btn:disabled { cursor: default; }
+        
+        .btn-start { background: var(--secondary); color: white; text-align: center; font-weight: bold; font-size: 1.2rem; border: none; margin-top: 1rem;}
+        .btn-start:hover { background: #2980B9; }
+        .btn-next { background: var(--primary); color: white; text-align: center; font-weight: bold; border: none; display: none; margin-top: 20px;}
+        .btn-next:hover { background: #1A252F; }
+
+        .correct { background: var(--correct) !important; color: white !important; border-color: var(--correct) !important; font-weight: bold;}
+        .wrong { background: var(--wrong) !important; color: white !important; border-color: var(--wrong) !important; text-decoration: line-through;}
+        
+        .screen { display: none; animation: fadeIn 0.4s ease; }
+        .screen.active { display: block; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 2px solid #EEE; padding-bottom: 10px; font-weight: 600; color: #555;}
+        .chapter-badge { background: var(--hover); color: var(--secondary); padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; }
+        
+        .question-box { font-size: 1.3rem; font-weight: 700; margin-bottom: 1.5rem; line-height: 1.5; color: var(--primary); }
+        
+        .explanation {
+            background: var(--exp-bg); border-left: 5px solid var(--secondary);
+            padding: 1.5rem; margin-top: 1.5rem; border-radius: 6px;
+            font-size: 1rem; line-height: 1.6; color: #2C3E50; display: none;
+            animation: fadeIn 0.4s ease;
+        }
+        .explanation span { font-weight: bold; color: var(--secondary); display: block; margin-bottom: 8px; font-size: 1.1rem;}
+        
+        .result-box { text-align: center; }
+        .score-display { font-size: 3.5rem; font-weight: 800; color: var(--secondary); margin: 20px 0; }
+        .progress-bar-bg { width: 100%; background: #EEE; height: 10px; border-radius: 5px; margin-bottom: 20px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: var(--secondary); width: 0%; transition: width 0.4s; }
+    </style>
+</head>
+<body>
+
+<div class="cbt-container">
+    <div id="screen-start" class="screen active">
+        <h1>🕯️ 삶과 죽음 전범위 실전 CBT</h1>
+        <p class="subtitle">간호학과 교양과목 「삶과 죽음」 전 범위 교재 완벽 반영<br>방대한 문제은행에서 <strong>20문제가 무작위로 추출</strong>됩니다.</p>
+        <button class="btn btn-start" onclick="startCBT()">🚀 실전 모의고사 시작하기</button>
+    </div>
+
+    <div id="screen-quiz" class="screen">
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress"></div></div>
+        <div class="header-bar">
+            <span class="chapter-badge" id="chapter-label">주제</span>
+            <span id="question-tracker">1 / 20</span>
+        </div>
+        <div class="question-box" id="question-text">질문이 여기에 표시됩니다.</div>
+        <div id="options-area"></div>
+        <div class="explanation" id="explanation-area"></div>
+        <button class="btn btn-next" id="btn-next" onclick="nextQuestion()">다음 문제 진행 ➔</button>
+    </div>
+
+    <div id="screen-result" class="screen result-box">
+        <h1>🎉 시험 종료!</h1>
+        <p class="subtitle">수고하셨습니다. 최종 성적을 확인하세요.</p>
+        <div class="score-display" id="final-score">100점</div>
+        <p id="result-feedback" style="font-size: 1.2rem; font-weight: 600; margin-bottom: 30px;"></p>
+        <button class="btn btn-start" onclick="location.reload()">새로운 무작위 모의고사 다시 풀기</button>
+    </div>
+</div>
+
+<!-- 분리한 문제 은행 파일 불러오기 -->
+<script src="questions.js"></script> 
+
+<script>
+    let currentTestParams = [];
+    let currentQuestionIndex = 0;
+    let score = 0;
+
+    function shuffleArray(array) {
+        let shuffled = array.slice();
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+    }
+
+    function startCBT() {
+        const shuffled = shuffleArray(questionBank);
+        currentTestParams = shuffled.slice(0, 20); 
+        
+        currentQuestionIndex = 0;
+        score = 0;
+        
+        document.getElementById('screen-start').classList.remove('active');
+        document.getElementById('screen-result').classList.remove('active');
+        document.getElementById('screen-quiz').classList.add('active');
+        
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        const qData = currentTestParams[currentQuestionIndex];
+        
+        document.getElementById('explanation-area').style.display = 'none';
+        document.getElementById('btn-next').style.display = 'none';
+        
+        document.getElementById('chapter-label').innerText = qData.ch;
+        document.getElementById('question-tracker').innerText = `${currentQuestionIndex + 1} / ${currentTestParams.length}`;
+        document.getElementById('question-text').innerText = `Q. ${qData.q}`;
+        
+        const progressPercent = (currentQuestionIndex / currentTestParams.length) * 100;
+        document.getElementById('progress').style.width = progressPercent + '%';
+
+        const optionsArea = document.getElementById('options-area');
+        optionsArea.innerHTML = '';
+        
+        qData.opts.forEach((optText, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'btn';
+            btn.innerHTML = `<span style="font-weight:bold; margin-right:10px;">${index + 1}.</span> ${optText}`;
+            btn.onclick = () => checkAnswer(index, btn);
+            optionsArea.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(selectedIndex, clickedBtn) {
+        const qData = currentTestParams[currentQuestionIndex];
+        const allBtns = document.getElementById('options-area').querySelectorAll('.btn');
+        
+        allBtns.forEach(btn => btn.disabled = true);
+
+        if (selectedIndex === qData.ans) {
+            clickedBtn.classList.add('correct');
+            score += 5;
+        } else {
+            clickedBtn.classList.add('wrong');
+            allBtns[qData.ans].classList.add('correct');
+        }
+        
+        const expArea = document.getElementById('explanation-area');
+        expArea.innerHTML = `<span>💡 정답 해설</span>${qData.exp}`;
+        expArea.style.display = 'block';
+        
+        document.getElementById('btn-next').style.display = 'block';
+    }
+
+    function nextQuestion() {
+        currentQuestionIndex++;
+        if (currentQuestionIndex < currentTestParams.length) {
+            loadQuestion();
+        } else {
+            showResult();
+        }
+    }
+
+    function showResult() {
+        document.getElementById('screen-quiz').classList.remove('active');
+        document.getElementById('screen-result').classList.add('active');
+        
+        document.getElementById('final-score').innerText = `${score}점`;
+        
+        let feedback = "";
+        if (score >= 90) feedback = "완벽합니다! '삶과 죽음' 핵심 개념을 완전하게 마스터하셨네요! 🏆";
+        else if (score >= 70) feedback = "훌륭합니다! 헷갈렸던 해설을 다시 한번 체크해 보세요. ✨";
+        else feedback = "조금만 더 복습하면 충분히 고득점이 가능합니다! 파이팅! 💪";
+        
+        document.getElementById('result-feedback').innerText = feedback;
+    }
+</script>
+</body>
+</html>
